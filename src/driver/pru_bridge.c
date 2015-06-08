@@ -65,35 +65,46 @@ struct pru_bridge_dev {
 	struct device *p_dev; /* parent platform device */
 };
 
-void store_in_buffer(char data)
+void write_buffer(char data)
 {
-
 	printk("Ring:%p  Buffer value1 : %c\n Tail : %d \n",ring,data,ring->tail);
     ring->buffer[ring->tail] = data;
     printk("Stored :%c\n",ring->buffer[ring->tail]);
     ring->tail = (ring->tail+1)%NUM_VALUES;
 }
 
+char read_buffer(void)
+{
+    char value = ring->buffer[ring->head];
+    ring->head = (ring->head+1)%NUM_VALUES;
+    return value;
+}
+
 static const struct file_operations pru_bridge_fops;
 
 
-static ssize_t pru_bridge_sys(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int i=0;
-	while(buf[i] != '\0')                                   //right now one extra iteration
+	while(buf[i] != '\0')                                   //right now one extra iteration containing blank spaces that i will deal with in a bit
 	{
 		printk("Buffer value : %c \n",buf[i]);
-		store_in_buffer(buf[i]);
+		write_buffer(buf[i]);
 		i++;
 	}
         printk("Write complete\n");
 
-	return buf;
+	return strlen(buf);
 }
 
 
-static DEVICE_ATTR(bridge,S_IWUSR|S_IRUGO,NULL,pru_bridge_sys);
+static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer());			//have to decide if i will return whole buffer right now only one character
+}
 
+static DEVICE_ATTR(ch1_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch1_write);
+static DEVICE_ATTR(ch1_read, S_IWUSR|S_IRUGO, pru_bridge_ch1_read, NULL);
 
 
 static int pru_bridge_probe(struct platform_device *pdev)
@@ -140,11 +151,18 @@ static int pru_bridge_probe(struct platform_device *pdev)
 
 	printk("Creating sysfs entries\n");
 
-	err = device_create_file(dev, &dev_attr_bridge);
-	if (err != 0) {                                                         //COME BACK
+	err = device_create_file(dev, &dev_attr_ch1_write);
+	if (err != 0){
 		dev_err(dev, "device_create_file failed\n");
 		goto err_fail;
 	}
+
+	err = device_create_file(dev, &dev_attr_ch1_read);
+        if (err != 0){
+                dev_err(dev, "device_create_file failed\n");
+                goto err_fail;
+        }
+
 
 	dev_info(dev, "Loaded OK\n");
 
@@ -161,12 +179,12 @@ static int pru_bridge_remove(struct platform_device *pdev)
 	struct pru_bridge_dev *pp = platform_get_drvdata(pdev);
 	struct device *dev = pp->miscdev.this_device;
 
-
-
+	/*Deallocating memory*/
 	printk("deallocating memory\n");
 	 iounmap(ring);
 
-	device_remove_file(dev, &dev_attr_bridge);
+	device_remove_file(dev, &dev_attr_ch1_write);
+	device_remove_file(dev, &dev_attr_ch1_read);
 
 
 	platform_set_drvdata(pdev, NULL);
