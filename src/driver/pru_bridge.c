@@ -100,7 +100,7 @@ static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer());			//have to decide if i will return whole buffer right now only one character
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer());			//have to decide if i will return whole buffer rigth now only one character
 }
 
 static DEVICE_ATTR(ch1_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch1_write);
@@ -152,7 +152,7 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	printk("Creating sysfs entries\n");
 
 	err = device_create_file(dev, &dev_attr_ch1_write);
-	if (err != 0){
+	if (err != 0){ 
 		dev_err(dev, "device_create_file failed\n");
 		goto err_fail;
 	}
@@ -180,6 +180,7 @@ static int pru_bridge_remove(struct platform_device *pdev)
 	struct device *dev = pp->miscdev.this_device;
 
 	/*Deallocating memory*/
+
 	printk("deallocating memory\n");
 	 iounmap(ring);
 
