@@ -67,7 +67,7 @@ struct pru_bridge_dev {
 
 void write_buffer(char data)
 {
-	printk("Ring:%p  Buffer value1 : %c\n Tail : %d \n",ring,data,ring->tail);
+	printk("Ring:%p  Buffer value : %c\n Tail : %d \n",ring,data,ring->tail);
     ring->buffer[ring->tail] = data;
     printk("Stored :%c\n",ring->buffer[ring->tail]);
     ring->tail = (ring->tail+1)%NUM_VALUES;
@@ -86,7 +86,8 @@ static const struct file_operations pru_bridge_fops;
 static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int i=0;
-	while(buf[i] != '\0')                                   //right now one extra iteration containing blank spaces that i will deal with in a bit
+	printk("%s/n",buf);
+	while(buf[i] != '\n')
 	{
 		printk("Buffer value : %c \n",buf[i]);
 		write_buffer(buf[i]);
@@ -100,7 +101,7 @@ static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer());			//have to decide if i will return whole buffer rigth now only one character
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer());			//have to decide if i will return whole buffer right now only one character
 }
 
 static DEVICE_ATTR(ch1_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch1_write);
