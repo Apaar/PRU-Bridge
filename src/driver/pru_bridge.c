@@ -34,24 +34,41 @@
 #include <linux/sysfs.h>
 #include <linux/fs.h>
 
+#include <linux/ctype.h>
 #include "external_glue.h"
 
 #define SHMDRAM_BASE 0x4a312000
 
-#define NUM_VALUES 10
+#define NUM_CHANNELS 5
 
 
+/*
+Defining control channle where
+pru_data - holds number of values o be read by the pru
+driver_data - number of values to be read by the driver
+*/
+struct control_channel
+{
+	volatile int init_check;
+	volatile int channel_size[NUM_CHANNELS];
+	volatile int pru_data[NUM_CHANNELS];
+	volatile int driver_data[NUM_CHANNELS];
+}size_control;
+
+volatile struct control_channel* control_channel;
+
+#define CONTROL_SIZE sizeof(size_control)
 
 struct circular_buffer
 {
 	volatile int head;
 	volatile int tail;
-	char buffer[NUM_VALUES];
-};
+	volatile char* buffer;
+}size_ring;
 
-volatile struct circular_buffer *ring;
+volatile struct circular_buffer* ring[NUM_CHANNELS];
 
-#define size sizeof(*ring)
+#define CIRCULAR_BUFFER_SIZE sizeof(size_ring)
 
 
 struct pru_bridge_dev {
@@ -65,22 +82,66 @@ struct pru_bridge_dev {
 	struct device *p_dev; /* parent platform device */
 };
 
-void write_buffer(char data)
+void write_buffer(int ring_no,char data)
 {
-	printk("Ring:%p  Buffer value : %c\n Tail : %d \n",ring,data,ring->tail);
-    ring->buffer[ring->tail] = data;
-    printk("Stored :%c\n",ring->buffer[ring->tail]);
-    ring->tail = (ring->tail+1)%NUM_VALUES;
+	printk("Ring:%p  Buffer value : %c\n Tail : %d \n",ring[ring_no],data,ring[ring_no]->tail);
+    *(ring[ring_no]->buffer + ring[ring_no]->tail) = data;
+    printk("Stored :%c\n",*(ring[ring_no]->buffer + ring[ring_no]->tail));
+    ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
 }
 
-char read_buffer(void)
+char read_buffer(int ring_no)
 {
-    char value = ring->buffer[ring->head];
-    ring->head = (ring->head+1)%NUM_VALUES;
+    char value = *(ring[ring_no]->buffer + ring[ring_no]->head);
+    ring[ring_no]->head = (ring[ring_no]->head+1)%(control_channel->channel_size[ring_no]);
     return value;
 }
 
+/*function to initialise all circular buffers and assign ring values*/
+void init_circular_buffer(void)
+{
+    int last_address,i=0;
+    last_address = SHMDRAM_BASE+CONTROL_SIZE;
+    printk("Base addr : %x Circular Buffer Size : %d Control size : %d\n",SHMDRAM_BASE,CIRCULAR_BUFFER_SIZE,CONTROL_SIZE);
+    while(i<NUM_CHANNELS)
+    {
+        printk("Last Addr : %x\n",last_address);
+        ring[i] = (volatile struct circular_buffer*)ioremap(last_address,CIRCULAR_BUFFER_SIZE);
+        ring[i]->head = 0;
+        ring[i]->tail = 0;
+	printk("Ring : %p\n",ring[i]);
+        ring[i]->buffer = (volatile char*)ioremap(last_address+CIRCULAR_BUFFER_SIZE,(sizeof(char)*(control_channel->channel_size[i])));
+        printk("Ring buffer : %p Size : %d\n",ring[i]->buffer,(sizeof(char)*(control_channel->channel_size[i])));
+        last_address = last_address + CIRCULAR_BUFFER_SIZE +(sizeof(char)*control_channel->channel_size[i]);
+        i++;
+    }
+}
+
 static const struct file_operations pru_bridge_fops;
+
+static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int i=0;
+	const char * p = buf;
+	printk("%s\n",buf);
+    while (*p)
+    {
+        if (isdigit(*p))
+        {
+            control_channel->channel_size[i] = (int) simple_strtoul(p,&p,10);
+            printk("Channel number:%d Size:%d\n",i+1,control_channel->channel_size[i]);
+            i++;
+        }
+        else
+        {
+            p++;
+        }
+    }
+    printk("Sizes set now initialising the channels\n");
+    init_circular_buffer();
+
+	return strlen(buf);
+}
 
 
 static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -90,7 +151,7 @@ static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute 
 	while(buf[i] != '\n')
 	{
 		printk("Buffer value : %c \n",buf[i]);
-		write_buffer(buf[i]);
+		write_buffer(0,buf[i]);
 		i++;
 	}
         printk("Write complete\n");
@@ -101,9 +162,10 @@ static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer());			//have to decide if i will return whole buffer right now only one character
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(0));			//have to decide if i will return whole buffer right now only one character
 }
 
+static DEVICE_ATTR(init, S_IWUSR|S_IRUGO,NULL,pru_bridge_init_channels);
 static DEVICE_ATTR(ch1_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch1_write);
 static DEVICE_ATTR(ch1_read, S_IWUSR|S_IRUGO, pru_bridge_ch1_read, NULL);
 
@@ -114,6 +176,11 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	struct pru_rproc_external_glue g;
 	struct device *dev;
 	int err;
+
+	 /*mapping shared memory for control channel*/
+	control_channel = (volatile struct control_channel*)ioremap(SHMDRAM_BASE,CIRCULAR_BUFFER_SIZE);
+        printk("Memory allocated for control channel\n");
+
 
 	/* Allocate memory for our private structure */
 	pp = kzalloc(sizeof(*pp), GFP_KERNEL);
@@ -142,18 +209,17 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	dev = pp->miscdev.this_device;
 	dev_set_drvdata(dev, pp);
 
-    /*mapping shared memory and initialising circular buffer*/
-	printk("Initialising shared memory of size :%d\n",size);
-	ring = (volatile struct circular_buffer*)ioremap(SHMDRAM_BASE,size);
-    ring->head = 0;
-	ring->tail = 0;
-	printk("Memory allocated at : %p head:%d tail:%d\n",ring,ring->head,ring->tail);
-
 
 	printk("Creating sysfs entries\n");
 
+	err = device_create_file(dev, &dev_attr_init);
+	if (err != 0){
+		dev_err(dev, "device_create_file failed\n");
+		goto err_fail;
+	}
+
 	err = device_create_file(dev, &dev_attr_ch1_write);
-	if (err != 0){ 
+	if (err != 0){
 		dev_err(dev, "device_create_file failed\n");
 		goto err_fail;
 	}
