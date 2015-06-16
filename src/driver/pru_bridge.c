@@ -90,6 +90,19 @@ void write_buffer(int ring_no,char data)
     ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
 }
 
+void write_buffer_wrapper(int ring_no,const char* buf)
+{
+    int i=0;
+	printk("%s/n",buf);
+	while(buf[i] != '\n')
+	{
+		printk("Buffer value : %c \n",buf[i]);
+		write_buffer(ring_no,buf[i]);
+		i++;
+	}
+        printk("Write complete\n");
+}
+
 char read_buffer(int ring_no)
 {
     char value = *(ring[ring_no]->buffer + ring[ring_no]->head);
@@ -115,6 +128,7 @@ void init_circular_buffer(void)
         last_address = last_address + CIRCULAR_BUFFER_SIZE +(sizeof(char)*control_channel->channel_size[i]);
         i++;
     }
+    printk("Channels successfully initialised\n");
 }
 
 static const struct file_operations pru_bridge_fops;
@@ -139,23 +153,14 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
     }
     printk("Sizes set now initialising the channels\n");
     init_circular_buffer();
-
+    control_channel->init_check = 1;
 	return strlen(buf);
 }
 
 
 static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	int i=0;
-	printk("%s/n",buf);
-	while(buf[i] != '\n')
-	{
-		printk("Buffer value : %c \n",buf[i]);
-		write_buffer(0,buf[i]);
-		i++;
-	}
-        printk("Write complete\n");
-
+	write_buffer_wrapper(0,buf);
 	return strlen(buf);
 }
 
@@ -165,10 +170,67 @@ static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *
     return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(0));			//have to decide if i will return whole buffer right now only one character
 }
 
+static ssize_t pru_bridge_ch2_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	write_buffer_wrapper(1,buf);
+	return strlen(buf);
+}
+
+
+static ssize_t pru_bridge_ch2_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(1));			//have to decide if i will return whole buffer right now only one character
+}
+
+static ssize_t pru_bridge_ch3_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	write_buffer_wrapper(2,buf);
+	return strlen(buf);
+}
+
+
+static ssize_t pru_bridge_ch3_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(2));			//have to decide if i will return whole buffer right now only one character
+}
+
+static ssize_t pru_bridge_ch4_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	write_buffer_wrapper(3,buf);
+	return strlen(buf);
+}
+
+
+static ssize_t pru_bridge_ch4_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(3));			//have to decide if i will return whole buffer right now only one character
+}
+
+static ssize_t pru_bridge_ch5_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	write_buffer_wrapper(4,buf);
+	return strlen(buf);
+}
+
+
+static ssize_t pru_bridge_ch5_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(4));			//have to decide if i will return whole buffer right now only one character
+}
+
+
+
 static DEVICE_ATTR(init, S_IWUSR|S_IRUGO,NULL,pru_bridge_init_channels);
 static DEVICE_ATTR(ch1_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch1_write);
 static DEVICE_ATTR(ch1_read, S_IWUSR|S_IRUGO, pru_bridge_ch1_read, NULL);
-
+static DEVICE_ATTR(ch2_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch2_write);
+static DEVICE_ATTR(ch2_read, S_IWUSR|S_IRUGO, pru_bridge_ch2_read, NULL);
+static DEVICE_ATTR(ch3_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch3_write);
+static DEVICE_ATTR(ch3_read, S_IWUSR|S_IRUGO, pru_bridge_ch3_read, NULL);
+static DEVICE_ATTR(ch4_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch4_write);
+static DEVICE_ATTR(ch4_read, S_IWUSR|S_IRUGO, pru_bridge_ch4_read, NULL);
+static DEVICE_ATTR(ch5_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch5_write);
+static DEVICE_ATTR(ch5_read, S_IWUSR|S_IRUGO, pru_bridge_ch5_read, NULL);
 
 static int pru_bridge_probe(struct platform_device *pdev)
 {
@@ -225,10 +287,58 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	}
 
 	err = device_create_file(dev, &dev_attr_ch1_read);
-        if (err != 0){
-                dev_err(dev, "device_create_file failed\n");
-                goto err_fail;
-        }
+    if (err != 0){
+            dev_err(dev, "device_create_file failed\n");
+            goto err_fail;
+    }
+
+    err = device_create_file(dev, &dev_attr_ch2_write);
+	if (err != 0){
+		dev_err(dev, "device_create_file failed\n");
+		goto err_fail;
+	}
+
+	err = device_create_file(dev, &dev_attr_ch2_read);
+    if (err != 0){
+            dev_err(dev, "device_create_file failed\n");
+            goto err_fail;
+    }
+
+    err = device_create_file(dev, &dev_attr_ch3_write);
+	if (err != 0){
+		dev_err(dev, "device_create_file failed\n");
+		goto err_fail;
+	}
+
+	err = device_create_file(dev, &dev_attr_ch3_read);
+    if (err != 0){
+            dev_err(dev, "device_create_file failed\n");
+            goto err_fail;
+    }
+
+    err = device_create_file(dev, &dev_attr_ch4_write);
+	if (err != 0){
+		dev_err(dev, "device_create_file failed\n");
+		goto err_fail;
+	}
+
+	err = device_create_file(dev, &dev_attr_ch4_read);
+    if (err != 0){
+            dev_err(dev, "device_create_file failed\n");
+            goto err_fail;
+    }
+
+    err = device_create_file(dev, &dev_attr_ch5_write);
+	if (err != 0){
+		dev_err(dev, "device_create_file failed\n");
+		goto err_fail;
+	}
+
+	err = device_create_file(dev, &dev_attr_ch5_read);
+    if (err != 0){
+            dev_err(dev, "device_create_file failed\n");
+            goto err_fail;
+    }
 
 
 	dev_info(dev, "Loaded OK\n");
@@ -250,9 +360,21 @@ static int pru_bridge_remove(struct platform_device *pdev)
 
 	printk("deallocating memory\n");
 	 iounmap(ring);
+	 iounmap(control_channel);
 
+	 printk("removing sysfs files\n");
+
+    device_remove_file(dev, &dev_attr_init);
 	device_remove_file(dev, &dev_attr_ch1_write);
 	device_remove_file(dev, &dev_attr_ch1_read);
+	device_remove_file(dev, &dev_attr_ch2_write);
+	device_remove_file(dev, &dev_attr_ch2_read);
+	device_remove_file(dev, &dev_attr_ch3_write);
+	device_remove_file(dev, &dev_attr_ch3_read);
+	device_remove_file(dev, &dev_attr_ch4_write);
+	device_remove_file(dev, &dev_attr_ch4_read);
+	device_remove_file(dev, &dev_attr_ch5_write);
+	device_remove_file(dev, &dev_attr_ch5_read);
 
 
 	platform_set_drvdata(pdev, NULL);
