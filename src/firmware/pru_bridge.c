@@ -1,14 +1,16 @@
+#include <stdint.h>
+
 #include "pru_bridge.h"
 #include "pru_defs.h"
-#define NUM_CHANNELS 10
+#define NUM_CHANNELS 5
 
 
 struct control_channel
 {
-	volatile int init_check;
-	volatile int channel_size[NUM_CHANNELS];
-	volatile int pru_data[NUM_CHANNELS];
-	volatile int driver_data[NUM_CHANNELS];
+	volatile uint16_t init_check;
+	volatile uint16_t channel_size[NUM_CHANNELS];
+	volatile uint16_t pru_data[NUM_CHANNELS];
+	volatile uint16_t driver_data[NUM_CHANNELS];
 }size_control;
 
 volatile struct control_channel* control_channel = (volatile struct control_channel*)DPRAM_SHARED;
@@ -17,9 +19,9 @@ volatile struct control_channel* control_channel = (volatile struct control_chan
 
 struct circular_buffer
 {
-	volatile int head;
-	volatile int tail;
-	volatile char* buffer;
+	volatile uint16_t head;
+	volatile uint16_t tail;
+	volatile uint8_t* buffer;
 }size_ring;
 
 volatile struct circular_buffer* ring[NUM_CHANNELS];
@@ -36,22 +38,22 @@ void pru_bridge_init(void)
         while(i<NUM_CHANNELS)
         {
             ring[i] = (volatile struct circular_buffer*)last_address;
-            ring[i]->buffer =(volatile char*) (last_address + CIRCULAR_BUFFER_SIZE);
-            last_address = last_address + CIRCULAR_BUFFER_SIZE +(sizeof(char)*control_channel->channel_size[i]);
+            ring[i]->buffer =(volatile uint8_t*) (last_address + CIRCULAR_BUFFER_SIZE);
+            last_address = last_address + CIRCULAR_BUFFER_SIZE + (int)(sizeof(uint8_t)*control_channel->channel_size[i]);
             i++;
         }
     }
 }
 
-void write_buffer(int ring_no,char data)
+void write_buffer(int ring_no,uint8_t data)
 {
     *(ring[ring_no]->buffer + ring[ring_no]->tail) = data;
     ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
 }
 
-char read_buffer(int ring_no)
+uint8_t read_buffer(int ring_no)
 {
-    char value = *(ring[ring_no]->buffer + ring[ring_no]->head);
+    uint8_t value = *(ring[ring_no]->buffer + ring[ring_no]->head);
     ring[ring_no]->head = (ring[ring_no]->head+1)%(control_channel->channel_size[ring_no]);
     return value;
 }
