@@ -43,22 +43,29 @@
 
 
 /*
-Defining control channle where
-pru_data - holds number of values o be read by the pru
-driver_data - number of values to be read by the driver
+Defining control channel where-
+
+init-check - is set to '1' once the channels have been initiaised
+chnnel_size - holds size of ezch channel muct be in multiples of 4
+pru_data - holds number of characters to be read also can check if buffe is full
 */
 struct control_channel
 {
 	volatile uint16_t init_check;
 	volatile uint16_t channel_size[NUM_CHANNELS];
 	volatile uint16_t pru_data[NUM_CHANNELS];
-	volatile uint16_t driver_data[NUM_CHANNELS];
 }size_control;
 
 volatile struct control_channel* control_channel;
 
 #define CONTROL_SIZE sizeof(size_control)
 
+/*
+Definition of a generic channel where -
+
+head,tail - they are used to maintain the circular buffer
+buffer - pointer to a character array of size defined in control channel allocated immediately after ring is defined in memory
+*/
 struct circular_buffer
 {
 	volatile uint16_t head;
@@ -82,15 +89,16 @@ struct pru_bridge_dev {
 	struct device *p_dev; /* parent platform device */
 };
 
-void write_buffer(int ring_no,char data)
+void write_buffer(int ring_no,char data)			//writing to pru shared memory
 {
 	printk("Ring:%p  Buffer value : %c\n Tail : %d \n",ring[ring_no],data,ring[ring_no]->tail);
     *(ring[ring_no]->buffer + ring[ring_no]->tail) = (uint8_t)data;
     printk("Stored :%c\n",*(ring[ring_no]->buffer + ring[ring_no]->tail));
+	(control_channel->pru_data[ring_no])++;			//allows pru to check if there is data to read or not
     ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
 }
 
-void write_buffer_wrapper(int ring_no,const char* buf)
+void write_buffer_wrapper(int ring_no,const char* buf)		//if data is a character array
 {
     int i=0;
 	printk("%s/n",buf);
@@ -100,20 +108,25 @@ void write_buffer_wrapper(int ring_no,const char* buf)
 		write_buffer(ring_no,buf[i]);
 		i++;
 	}
-        printk("Write complete\n");
+    printk("Write complete\n");
 }
 
 char read_buffer(int ring_no)
 {
     uint8_t value = *(ring[ring_no]->buffer + ring[ring_no]->head);
+    (control_channel->pru_data[ring_no])--;                 //allows pru to check if there is data to read or not
     ring[ring_no]->head = (ring[ring_no]->head+1)%(control_channel->channel_size[ring_no]);
     return (char)value;
 }
 
-/*function to initialise all circular buffers and assign ring values*/
+/*function to initialise all circular buffers and assign ring values
+
+we compute address base on -
+new address = old address + size of circular buffer headers + size of character buffer
+*/
 void init_circular_buffer(void)
 {
-   int last_address,i=0;
+    int last_address,i=0;
     last_address = SHMDRAM_BASE+CONTROL_SIZE;
     printk("Base addr : %x Circular Buffer Size : %d Control size : %d\n",SHMDRAM_BASE,CIRCULAR_BUFFER_SIZE,CONTROL_SIZE);
     while(i<NUM_CHANNELS)
@@ -122,7 +135,7 @@ void init_circular_buffer(void)
         ring[i] = (volatile struct circular_buffer*)ioremap(last_address,CIRCULAR_BUFFER_SIZE);
         ring[i]->head = 0;
         ring[i]->tail = 0;
-	printk("Ring : %p\n",ring[i]);
+        printk("Ring : %p\n",ring[i]);
         ring[i]->buffer = (volatile uint8_t*)ioremap(last_address+CIRCULAR_BUFFER_SIZE,(sizeof(uint8_t)*(control_channel->channel_size[i])));
         printk("Ring buffer : %p Size : %d\n",ring[i]->buffer,(sizeof(uint8_t)*(control_channel->channel_size[i])));
         last_address = last_address + CIRCULAR_BUFFER_SIZE +(int)(sizeof(uint8_t)*control_channel->channel_size[i]);
@@ -138,7 +151,7 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
 	int i=0;
 	const char * p = buf;
 	printk("%s\n",buf);
-    while (*p)
+    while (*p)								//extracting the sizes as integers from character buffer recieved from the handler
     {
         if (isdigit(*p))
         {
@@ -153,7 +166,7 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
     }
     printk("Sizes set now initialising the channels\n");
     init_circular_buffer();
-    control_channel->init_check = 1;
+    control_channel->init_check = 1;					//setting flags
     return strlen(buf);
 }
 
@@ -237,11 +250,13 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	struct pru_bridge_dev *pp;
 	struct pru_rproc_external_glue g;
 	struct device *dev;
-	int err;
+	int err,i=0;
 
 	 /*mapping shared memory for control channel*/
 	control_channel = (volatile struct control_channel*)ioremap(SHMDRAM_BASE,CIRCULAR_BUFFER_SIZE);
-        control_channel->init_check = 0;
+    control_channel->init_check = 0;
+	for(i=0;i<NUM_CHANNELS;i++)
+    (control_channel->pru_data[i])= 0;			//initialising pru_data
 	printk("Memory allocated for control channel\n");
 
 
