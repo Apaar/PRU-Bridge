@@ -1,8 +1,5 @@
 /*
- * PRU driver for TI's AM33xx series of SoCs
- *
- * Copyright (C) 2013 Pantelis Antoniou <panto@antoniou-consulting.com>
- *
+ * PRU Bridge driver
  * This file is licensed under the terms of the GNU General Public License
  * version 2.  This program is licensed "as is" without any warranty of any
  * kind, whether express or implied.
