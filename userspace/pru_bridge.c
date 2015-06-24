@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <string.h>
-
+#include <stdlib.h>
 #define NUM_CHANNELS 5
 #define PRU_READ 0
 #define PRU_WRITE 1
@@ -47,41 +48,48 @@ void pru_channel_open(int channel_no,int type)
     char file_nm[100] = "/sys/devices/virtual/misc/pru_bridge/";
     strcat(file_nm, input);
     printf("%s\n",file_nm);
-    file_name[channel_no] = open(file_nm,O_RDWR);
+    file_name[channel_no-1] = open(file_nm,O_RDWR);
 }
 
 void pru_channel_close(int channel_no)
 {
-   close(file_name[channel_no]);
+   close(file_name[channel_no-1]);
 }
 
-void pru_write(int channel_no,int data)
+int pru_write(int channel_no,uint8_t* data,uint8_t length)
 {
-    char char_data[5];
-    sprintf(char_data,"%d",data);
-    printf("%s\n",char_data);
-    write(file_name[channel_no],&char_data,sizeof(char_data));
+    int i = 0;
+    while(i<length)
+    {   
+        printf("%c\n",*(data+i));
+        write(file_name[channel_no-1],(data+i),sizeof(uint8_t));
+	i++;
+    }
+return length;
 }
-//void pru_block_write(int channel_no,int* data,int length)
 
-int pru_read(int channel_no)
+int pru_read(int channel_no,uint8_t* data,uint8_t length)
 {
-    int data;
-    read(file_name[channel_no],&data,sizeof(int));
-    return data;
+    int i = 0;
+    data = malloc(length);
+    while(i<length)
+    {
+        read(file_name[channel_no-1],(data+i),1);
+	i++;
+    }
+return length;
 }
-
-//int* pru_block_read(int channel_no,int length)
 
 int main()
 {
     int size[5] = {12,12,12,12,12};
     pru_bridge_init(size);
     pru_channel_open(1,PRU_WRITE);
-    pru_channel_open(2,PRU_READ);
-    pru_write(1,101);
-    printf("%d\n",pru_read(2));
+    int* data ;
+    int d = 4;
+    data = &d;
+    pru_write(1,data,4);
     pru_channel_close(1);
-    pru_channel_close(2);
-   return 0;
+    return 0;
 }
+
