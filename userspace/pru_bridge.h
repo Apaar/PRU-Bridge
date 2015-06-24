@@ -7,7 +7,7 @@
 int pru_bridge_init(int channel_sizes[NUM_CHANNELS]);
 void pru_channel_open(int channel_no,int type);
 void pru_channel_close(int channel_no);
-int pru_write(int channel_no,uint8_t* data,uint8_t length);
+int pru_write(int channel_no,void* pru_data,uint8_t length);
 int pru_read(int channel_no,uint8_t* data,uint8_t length);
 
 #endif

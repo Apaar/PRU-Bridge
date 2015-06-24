@@ -56,11 +56,12 @@ void pru_channel_close(int channel_no)
    close(file_name[channel_no-1]);
 }
 
-int pru_write(int channel_no,uint8_t* data,uint8_t length)
+int pru_write(int channel_no,void* data,uint8_t length)
 {
     int i = 0;
+    uint8_t *data = (uint8_t*)pru_data;
     while(i<length)
-    {   
+    {
         printf("%c\n",*(data+i));
         write(file_name[channel_no-1],(data+i),sizeof(uint8_t));
 	i++;
@@ -68,7 +69,7 @@ int pru_write(int channel_no,uint8_t* data,uint8_t length)
 return length;
 }
 
-int pru_read(int channel_no,uint8_t* data,uint8_t length)
+int pru_read(int channel_no,uint8_t* pru_data,uint8_t length)
 {
     int i = 0;
     data = malloc(length);
