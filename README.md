@@ -9,11 +9,11 @@ Each channel will be represented by 2 sysfs files in userspace one for read and 
 
 ### Userspace Linux API's
 ```javascript
-int pru_bridge_init(int* channel_sizes)
-void pru_write(int channel_no,char data)
-void pru_block_write(int channel_no,char* data,int length)
-char pru_read(int channel_no)
-char* pru_block_read(int channel_no,int length)
+int pru_bridge_init(int channel_sizes[NUM_CHANNELS]);
+void pru_channel_open(int channel_no,int type);
+void pru_channel_close(int channel_no);
+int pru_write(int channel_no,void* pru_data,uint8_t length);
+int pru_read(int channel_no,uint8_t* data,uint8_t length);
 ```
 
 ### PRU C API's
