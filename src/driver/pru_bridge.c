@@ -163,7 +163,8 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
     }
     printk("Sizes set now initialising the channels\n");
     init_circular_buffer();
-    control_channel->init_check = 1;					//setting flags
+    control_channel->init_check = 1;
+    printk("Initialised Init : %d\n",control_channel->init_check);				//setting flags
     return strlen(buf);
 }
 

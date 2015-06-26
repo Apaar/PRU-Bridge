@@ -10,7 +10,6 @@ struct control_channel
 	volatile uint16_t init_check;
 	volatile uint16_t channel_size[NUM_CHANNELS];
 	volatile uint16_t pru_data[NUM_CHANNELS];
-	volatile uint16_t driver_data[NUM_CHANNELS];
 }size_control;
 
 volatile struct control_channel* control_channel = (volatile struct control_channel*)DPRAM_SHARED;
@@ -45,25 +44,40 @@ void pru_bridge_init(void)
     }
 }
 
-void write_buffer(int ring_no,uint8_t data)
+int write_buffer(int ring_no,void* prudata,uint8_t length)
 {
-    *(ring[ring_no]->buffer + ring[ring_no]->tail) = (uint8_t)data;
-    ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
-    if((control_channel->pru_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
-        (control_channel->pru_data[ring_no])++;
+    int i = 0;
+    uint8_t *data = (uint8_t*)prudata;
+    while(i<length)
+    {
+        *(ring[ring_no]->buffer + ring[ring_no]->tail) = *(data+i);
+        ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
+        if((control_channel->pru_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
+            {(control_channel->pru_data[ring_no])++;}
+        i++;
+    }
+    return length;
 }
 
-uint8_t read_buffer(int ring_no)
+int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
 {
-    if((control_channel->pru_data[ring_no]) != 0)
+    int i = 0;
+    uint8_t data[length];
+    pru_data = data;
+    while(i<length)
     {
-        uint16_t value = *(ring[ring_no]->buffer + ring[ring_no]->head);
-        ring[ring_no]->head = (ring[ring_no]->head+1)%(control_channel->channel_size[ring_no]);
-        (control_channel->pru_data[ring_no])--;             //allows pru to check if there is data to read or not
-        return value;
+        if((control_channel->pru_data[ring_no]) != 0)
+        {
+            data[i] = *(ring[ring_no]->buffer + ring[ring_no]->head);
+            ring[ring_no]->head = (ring[ring_no]->head+1)%(control_channel->channel_size[ring_no]);
+            (control_channel->pru_data[ring_no])--;             //allows pru to check if there is data to read or not
+        }
+        else
+            return -1;
+
+        i++;
     }
-    elses
-        return -1;
+    return length;
 }
 
 int check_init(void)
