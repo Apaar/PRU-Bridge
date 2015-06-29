@@ -3,81 +3,56 @@
 #include "pru_bridge.h"
 #include "pru_defs.h"
 #define NUM_CHANNELS 5
-
+#define TOTAL_BUFFER_SIZE 5000
 
 struct control_channel
 {
 	volatile uint16_t init_check;
 	volatile uint16_t channel_size[NUM_CHANNELS];
-	volatile uint16_t pru_data[NUM_CHANNELS];
+	volatile uint16_t index_data[NUM_CHANNELS];
+	volatile uint16_t buffer_start[NUM_CHANNELS];
+	volatile uint16_t head[NUM_CHANNELS];
+	volatile uint16_t tail[NUM_CHANNELS];
 }size_control;
 
 volatile struct control_channel* control_channel = (volatile struct control_channel*)DPRAM_SHARED;
 
 #define CONTROL_SIZE sizeof(size_control)+(sizeof(size_control)%4)
 
-struct circular_buffer
+struct circular_buffers
 {
-	volatile uint16_t head;
-	volatile uint16_t tail;
-	volatile uint8_t* buffer;
-}size_ring;
+	uint8_t data[TOTAL_BUFFER_SIZE];
+};
 
-volatile struct circular_buffer* ring[NUM_CHANNELS];
+volatile struct circular_buffers* ring = (volatile struct circular_buffers*)(DPRAM_SHARED + CONTROL_SIZE);
 
-#define CIRCULAR_BUFFER_SIZE sizeof(size_ring)
 
-void pru_bridge_init(void)
+int write_buffer(int ring_no,uint8_t pru_data)
 {
-    if(control_channel->init_check == 1)
-    {
-        int last_address,i=0;
-        last_address = DPRAM_SHARED+CONTROL_SIZE;
+        ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = pru_data;
 
-        while(i<NUM_CHANNELS)
-        {
-            ring[i] = (volatile struct circular_buffer*)last_address;
-            ring[i]->buffer =(volatile uint8_t*) (last_address + CIRCULAR_BUFFER_SIZE);
-            last_address = last_address + CIRCULAR_BUFFER_SIZE + (int)(sizeof(uint8_t)*control_channel->channel_size[i]);
-            i++;
-        }
-    }
+        if((control_channel->index_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
+            (control_channel->index_data[ring_no])++;
+
+        control_channel->tail[ring_no] = (control_channel->tail[ring_no]+1)%(control_channel->channel_size[ring_no]);
+
+    return 0;
 }
 
-int write_buffer(int ring_no,void* prudata,uint8_t length)
+uint8_t read_buffer(int ring_no)
 {
-    int i = 0;
-    uint8_t *data = (uint8_t*)prudata;
-    while(i<length)
-    {
-        *(ring[ring_no]->buffer + ring[ring_no]->tail) = *(data+i);
-        ring[ring_no]->tail = (ring[ring_no]->tail+1)%(control_channel->channel_size[ring_no]);
-        if((control_channel->pru_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
-            {(control_channel->pru_data[ring_no])++;}
-        i++;
-    }
-    return length;
-}
 
-int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
-{
-    int i = 0;
-    uint8_t data[length];
-    pru_data = data;
-    while(i<length)
+    if(control_channel->index_data[ring_no] == 0)
     {
-        if((control_channel->pru_data[ring_no]) != 0)
-        {
-            data[i] = *(ring[ring_no]->buffer + ring[ring_no]->head);
-            ring[ring_no]->head = (ring[ring_no]->head+1)%(control_channel->channel_size[ring_no]);
-            (control_channel->pru_data[ring_no])--;             //allows pru to check if there is data to read or not
-        }
-        else
-            return -1;
+        uint8_t value = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
 
-        i++;
+        (control_channel->index_data[ring_no])--;
+
+        control_channel->head[ring_no] = (control_channel->head[ring_no]+1)%(control_channel->channel_size[ring_no]);
+        return value;
     }
-    return length;
+    else
+        return 0;
 }
 
 int check_init(void)

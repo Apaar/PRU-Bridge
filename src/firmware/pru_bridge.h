@@ -5,8 +5,8 @@
 
 
 int check_init(void);
+uint8_t read_buffer(int ring_no);
+int write_buffer(int ring_no,uint8_t pru_data);
 int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length);
-int write_buffer(int ring_no,void* pru_data,uint8_t length);
-void pru_bridge_init(void);
-
+int write_buffer(int ring_no,uint8_t* pru_data,uint8_t length);
 #endif
