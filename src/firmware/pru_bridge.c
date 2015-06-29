@@ -27,32 +27,36 @@ struct circular_buffers
 volatile struct circular_buffers* ring = (volatile struct circular_buffers*)(DPRAM_SHARED + CONTROL_SIZE);
 
 
-int write_buffer(int ring_no,uint8_t pru_data)
+int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
 {
-        ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = pru_data;
+    int i = 0;
+    while(i<length)
+    {
+        if(control_channel->index_data[ring_no] == 0)
+        {
+            *(pru_data+i) = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
+            (control_channel->index_data[ring_no])--;
+            control_channel->head[ring_no] = (control_channel->head[ring_no]+1)%(control_channel->channel_size[ring_no]);
+        }
+        else
+            return -1;
 
-        if((control_channel->index_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
-            (control_channel->index_data[ring_no])++;
-
-        control_channel->tail[ring_no] = (control_channel->tail[ring_no]+1)%(control_channel->channel_size[ring_no]);
-
+        i++;
+    }
     return 0;
 }
-
-uint8_t read_buffer(int ring_no)
+int write_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
 {
-
-    if(control_channel->index_data[ring_no] == 0)
+    int i = 0;
+    while(i<length)
     {
-        uint8_t value = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
-
-        (control_channel->index_data[ring_no])--;
-
-        control_channel->head[ring_no] = (control_channel->head[ring_no]+1)%(control_channel->channel_size[ring_no]);
-        return value;
+        ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = *(pru_data+i);
+        if((control_channel->index_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
+            (control_channel->index_data[ring_no])++;
+        control_channel->tail[ring_no] = (control_channel->tail[ring_no]+1)%(control_channel->channel_size[ring_no]);
+        i++;
     }
-    else
-        return 0;
+    return 0;
 }
 
 int check_init(void)

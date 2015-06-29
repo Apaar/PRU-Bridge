@@ -4,9 +4,10 @@
 int main()
 {
     while(check_init() != 1);
-    write_buffer(0,'a');
-    write_buffer(1,'b');
-    write_buffer(2,'c');
-    write_buffer(3,'d');
+
+    uint8_t data[4] = "abcd";
+    int data1 = 100;
+    write_buffer(0,data,4);
+    write_buffer(1,(uint8_t*)(&data1),sizeof(data1));
 return 0;
 }

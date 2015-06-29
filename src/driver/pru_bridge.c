@@ -42,7 +42,7 @@
 /*
 Defining control channel where-
 
-init-check - is set to '1' once the channels have been initiaised
+init-check - is set to '1' once the channels have been initialised
 channel_size - holds size of each channel must be in multiples of 4
 index_data - holds number of characters to be read also can check if buffer is full
 head,tail - they are used to maintain the circular buffer
