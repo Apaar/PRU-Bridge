@@ -1,3 +1,14 @@
+
+/*
+ * PRU Bridge firmware to enable data trsfer between PRU<-->ARM
+ *
+ * Copyright (C) 2015 Apaar Gupta
+ * This file is licensed under the terms of the GNU General Public License
+ * version 3.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
+
+
 #include <stdint.h>
 
 #include "pru_bridge.h"
