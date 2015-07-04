@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2015 Apaar Gupta
  * This file is licensed under the terms of the GNU General Public License
- * version 3.  This program is licensed "as is" without any warranty of any
+ * version 2.  This program is licensed "as is" without any warranty of any
  * kind, whether express or implied.
  */
 
@@ -17,7 +17,7 @@
 #include "pru_bridge.h"
 
 #define NUM_CHANNELS 5
-int file_name[NUM_CHANNELS];
+FILE *file_name[NUM_CHANNELS];
 
 int pru_bridge_init(int channel_sizes[NUM_CHANNELS])
 {
@@ -31,14 +31,15 @@ int pru_bridge_init(int channel_sizes[NUM_CHANNELS])
         strcat(input, " ");
     }
     strcat(input, "\n\0");
-    int f = open("/sys/devices/virtual/misc/pru_bridge/init",O_WRONLY);
-    if (f != -1)
+    FILE* fp = fopen("/sys/devices/virtual/misc/pru_bridge/init","w");
+    printf("Init opened\n");
+    if (fp != NULL)
     {
-        write(f,input,sizeof(input));
-        close(f);
+        fwrite(input,sizeof(char),strlen(input),fp);
+        fclose(fp);
     }
     else
-    printf("Unable to open init\n");
+        printf("Unable to open init\n");
 }
 
 void pru_channel_open(int channel_no,int type)
@@ -57,8 +58,7 @@ void pru_channel_open(int channel_no,int type)
 
     char file_nm[100] = "/sys/devices/virtual/misc/pru_bridge/";
     strcat(file_nm, input);
-    printf("%s\n",file_nm);
-    file_name[channel_no-1] = open(file_nm,O_RDWR);
+    file_name[channel_no-1] = fopen(file_nm,"rw");
 }
 
 void pru_channel_close(int channel_no)
@@ -72,9 +72,10 @@ int pru_write(int channel_no,uint8_t* pru_data,uint8_t length)
     while(i<length)
     {
         printf("%c\n",*(pru_data+i));
-        write(file_name[channel_no-1],(pru_data+i),1);
+        fwrite((pru_data+i),1,1,file_name[channel_no-1]);
 	i++;
     }
+    rewind(file_name[channel_no-1]);
 return length;
 }
 
@@ -83,9 +84,10 @@ int pru_read(int channel_no,uint8_t* pru_data,uint8_t length)
     int i = 0;
     while(i<length)
     {
-        read(file_name[channel_no-1],(pru_data+i),1);
+        fread((pru_data+i),1,1,file_name[channel_no-1]);
         printf("%d\n",*(pru_data+i));
         i++;
     }
+    rewind(file_name[channel_no-1]);
 return length;
 }

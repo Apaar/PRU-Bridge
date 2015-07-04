@@ -4,10 +4,13 @@
 int main()
 {
     while(check_init() != 1);
+    int i =0;
 
-    uint8_t data[4] = "abcd";
-    int data1 = 100;
-    write_buffer(0,data,4);
-    write_buffer(1,(uint8_t*)(&data1),sizeof(data1));
+    while(i<1000)
+    {
+        int data = i;
+        write_buffer(0,(uint8_t*)(&data),sizeof(data));
+        i++;
+    }
 return 0;
 }
