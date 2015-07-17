@@ -104,7 +104,6 @@ void write_buffer(int ring_no,uint8_t data)			//writing to pru shared memory
 
 void write_buffer_wrapper(int ring_no,const char* buf)
 {
-    printk("Buffer value : %c \n",buf[0]);
     write_buffer(ring_no,(uint8_t)buf[0]);
 }
 
@@ -155,18 +154,21 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
         control_channel->buffer_start[i] = temp_index;
         temp_index = temp_index + control_channel->channel_size[i];
         printk("Start number:%d \n",control_channel->buffer_start[i]);
+        control_channel->index_data[i] = 0;
+        control_channel->head[i] = 0;
+        control_channel->tail[i] = 0;
     }
 
     control_channel->init_check = 1;                                            //setting flags
     printk("Initialised Init : %d\n",control_channel->init_check);
-    return strlen(buf);
+    return strlen(buf)+1;
 }
 
 
 static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	write_buffer_wrapper(0,buf);
-	return strlen(buf);
+	return strlen(buf)+1;
 }
 
 
@@ -178,7 +180,7 @@ static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *
 static ssize_t pru_bridge_ch2_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	write_buffer_wrapper(1,buf);
-	return strlen(buf);
+	return strlen(buf)+1;
 }
 
 
@@ -190,7 +192,7 @@ static ssize_t pru_bridge_ch2_read(struct device *dev, struct device_attribute *
 static ssize_t pru_bridge_ch3_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	write_buffer_wrapper(2,buf);
-	return strlen(buf);
+	return strlen(buf)+1;
 }
 
 
@@ -202,7 +204,7 @@ static ssize_t pru_bridge_ch3_read(struct device *dev, struct device_attribute *
 static ssize_t pru_bridge_ch4_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	write_buffer_wrapper(3,buf);
-	return strlen(buf);
+	return strlen(buf)+1;
 }
 
 
@@ -214,7 +216,7 @@ static ssize_t pru_bridge_ch4_read(struct device *dev, struct device_attribute *
 static ssize_t pru_bridge_ch5_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	write_buffer_wrapper(4,buf);
-	return strlen(buf);
+	return strlen(buf)+1;
 }
 
 
