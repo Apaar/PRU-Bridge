@@ -40,7 +40,7 @@
 #define SHMDRAM_BASE 0x4a312000
 
 #define NUM_CHANNELS 5
-#define TOTAL_BUFFER_SIZE 5000
+#define TOTAL_BUFFER_SIZE 11500
 
 /*
 Defining control channel where-
@@ -109,7 +109,7 @@ void write_buffer_wrapper(int ring_no,const char* buf)
 
 uint8_t read_buffer(int ring_no)
 {
-    if(control_channel->index_data[ring_no] == 0)
+    if(control_channel->index_data[ring_no] != 0)
     {
         uint8_t value = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
 
@@ -123,7 +123,10 @@ uint8_t read_buffer(int ring_no)
         return (char)value;
     }
     else
+    {
+	printk("READ -> NO DATA\n");
         return 0;
+    }
 }
 
 

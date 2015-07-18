@@ -14,7 +14,7 @@
 #include "pru_bridge.h"
 #include "pru_defs.h"
 #define NUM_CHANNELS 5
-#define TOTAL_BUFFER_SIZE 5000
+#define TOTAL_BUFFER_SIZE 11500
 
 struct control_channel
 {
@@ -43,7 +43,7 @@ int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
     int i = 0;
     while(i<length)
     {
-        if(control_channel->index_data[ring_no] == 0)
+        if(control_channel->index_data[ring_no] != 0)
         {
             *(pru_data+i) = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
             (control_channel->index_data[ring_no])--;
@@ -62,7 +62,7 @@ int write_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
     while(i<length)
     {
         ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = *(pru_data+i);
-        if((control_channel->index_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
+        if((control_channel->index_data[ring_no]) < (control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
             (control_channel->index_data[ring_no])++;
         control_channel->tail[ring_no] = (control_channel->tail[ring_no]+1)%(control_channel->channel_size[ring_no]);
         i++;
