@@ -18,4 +18,6 @@
 int check_init(void);
 int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length);
 int write_buffer(int ring_no,uint8_t* pru_data,uint8_t length);
+int check_index(int ring_no);
+
 #endif

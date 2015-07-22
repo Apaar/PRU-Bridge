@@ -75,3 +75,7 @@ int check_init(void)
     return control_channel->init_check;
 }
 
+int check_index(int ring_no)
+{
+    return ((control_channel->channel_size[ring_no]) - (control_channel->index_data[ring_no]));
+}
