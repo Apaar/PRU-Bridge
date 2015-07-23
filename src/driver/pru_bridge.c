@@ -129,6 +129,16 @@ uint8_t read_buffer(int ring_no)
     }
 }
 
+void flush_buffer(int ring_no,uint8_t* data)
+{
+
+    int i = 0,index = control_channel->index_data[ring_no];
+    while(i < index)
+    {
+        data[i] = read_buffer(ring_no);
+        i++;
+    }
+}
 
 static const struct file_operations pru_bridge_fops;
 
@@ -263,7 +273,9 @@ static ssize_t pru_bridge_ch9_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch9_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(8));
+    uint8_t data[control_channel->channel_size[8]];
+    flush_buffer(8,data);
+    return scnprintf(buf, PAGE_SIZE,"%s\n",data);
 }
 
 static ssize_t pru_bridge_ch10_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -274,7 +286,9 @@ static ssize_t pru_bridge_ch10_write(struct device *dev, struct device_attribute
 
 static ssize_t pru_bridge_ch10_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(9));
+    uint8_t data[control_channel->channel_size[9]];
+    flush_buffer(9,data);
+    return scnprintf(buf, PAGE_SIZE,"%s\n",data);
 }
 
 static ssize_t pru_bridge_downcall(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -282,7 +296,7 @@ static ssize_t pru_bridge_downcall(struct device *dev, struct device_attribute *
     struct platform_device *pdev = to_platform_device(dev);
     struct pru_bridge_dev *pp = platform_get_drvdata(pdev);
 
-    int i=0,temp_index=0,downcall_value[7],ret;
+    int i=0,downcall_value[7],ret;
     char * p =(char*) buf;
 	printk("%s\n",buf);
     while (*p)
