@@ -93,7 +93,6 @@ int pru_write(int channel_no,uint8_t* pru_data,uint8_t length)
     int i = 0;
     while(i<length)
     {
-        printf("%d\n",*(pru_data+i));
         fwrite((pru_data+i),1,1,file_name[channel_no-1]);
         rewind(file_name[channel_no-1]);
         i++;
@@ -107,7 +106,6 @@ int pru_read(int channel_no,uint8_t* pru_data,uint8_t length)
     while(i<length)
     {
         fread((pru_data+i),1,1,file_name[channel_no-1]);
-        printf("%d\n",*(pru_data+i));
         rewind(file_name[channel_no-1]);
         fflush(file_name[channel_no-1]);
         i++;
