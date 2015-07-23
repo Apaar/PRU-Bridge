@@ -13,7 +13,7 @@
 
 #include "pru_bridge.h"
 #include "pru_defs.h"
-#define NUM_CHANNELS 5
+#define NUM_CHANNELS 10
 #define TOTAL_BUFFER_SIZE 11500
 
 struct control_channel

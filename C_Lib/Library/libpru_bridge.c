@@ -16,13 +16,13 @@
 #include <stdlib.h>
 #include "pru_bridge.h"
 
-#define NUM_CHANNELS 5
+#define NUM_CHANNELS 10
 FILE *file_name[NUM_CHANNELS];
 
 int pru_bridge_init(int channel_sizes[NUM_CHANNELS])
 {
     int i=0;
-    char input[20],char_sizes[5];
+    char input[100],char_sizes[10];
     strcpy(input,"");
 
     int size_check = 0;
