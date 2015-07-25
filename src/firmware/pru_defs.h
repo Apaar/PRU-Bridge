@@ -22,7 +22,7 @@ __far volatile char C4[0x100] __attribute__((cregister("C4", near)));	/* PRUCFG 
 #define  SYSCFG_IDLE_MODE_NO		(1 << SYSCFG_IDLE_MODE_S)
 #define  SYSCFG_IDLE_MODE_SMART		(2 << SYSCFG_IDLE_MODE_S)
 #define  SYSCFG_STANDBY_MODE_S		2
-#define  SYSCFG_STANDBY_MODE_W		2	
+#define  SYSCFG_STANDBY_MODE_W		2
 #define  SYSCFG_STANDBY_MODE_M		((SYSCFG_STANDBY_MODE_W - 1) << SYSCFG_STANDBY_MODE_S)
 #define  SYSCFG_STANDBY_MODE_FORCE	(0 << SYSCFG_STANDBY_MODE_S)
 #define  SYSCFG_STANDBY_MODE_NO		(1 << SYSCFG_STANDBY_MODE_S)
@@ -524,7 +524,7 @@ __far volatile char C4[0x100] __attribute__((cregister("C4", near)));	/* PRUCFG 
 #define PRU_200MHz_ns(x)	((u32)(((x) * 2) / 10))
 #define PRU_200MHz_ns_err(x)	((u32)(((x) * 2) % 10))
 
-#if PRU_CLK != 200000000 
+#if PRU_CLK != 200000000
 /* NOTE: Do no use it for larger than 5 secs */
 #define PRU_sec(x)	((u32)(((u64)(x) * PRU_CLK)))
 #define PRU_ms(x)	((u32)(((u64)(x) * PRU_CLK) / 1000))
@@ -544,7 +544,7 @@ __far volatile char C4[0x100] __attribute__((cregister("C4", near)));	/* PRUCFG 
 #define PRU_ns_err(x)	PRU_200MHz_ns_err(x)
 #endif
 
-#define DPRAM_SHARED	0x00012000
+#define DPRAM_SHARED	0x00010000
 
 /* event definitions */
 #define SYSEV_ARM_TO_PRU0	21

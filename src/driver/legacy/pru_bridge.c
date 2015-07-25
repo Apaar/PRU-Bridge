@@ -69,11 +69,13 @@ Definition of a the virtual buffer
 */
 struct circular_buffers
 {
-	uint8_t data[TOTAL_BUFFER_SIZE];
+	volatile uint8_t* data[TOTAL_BUFFER_SIZE];
 }size_ring;
 
-volatile struct circular_buffers* ring;
-
+struct circular_buffers ring;
+volatile uint8_t *buffer1;
+volatile uint8_t *buffer2;
+volatile uint8_t *buffer3;
 #define CIRCULAR_BUFFER_SIZE sizeof(size_ring)
 
 
@@ -88,14 +90,15 @@ struct pru_bridge_dev {
 	struct device *p_dev; /* parent platform device */
 };
 
+
 void write_buffer(int ring_no,uint8_t data)			//writing to pru shared memory
 {
-    ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = (uint8_t)data;
+    *(ring.data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]]) = (uint8_t)data;
 
     if((control_channel->index_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
         (control_channel->index_data[ring_no])++;
 
-    printk("WRITE-> Data :%d Location :%d Index :%d\n",ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]]
+    printk("WRITE-> Data :%d Location :%d Index :%d\n",*(ring.data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]])
                                               ,control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]
                                               ,control_channel->index_data[ring_no]);
 
@@ -111,11 +114,11 @@ uint8_t read_buffer(int ring_no)
 {
     if(control_channel->index_data[ring_no] != 0)
     {
-        uint8_t value = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
+        uint8_t value = *(ring.data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]]);
 
         (control_channel->index_data[ring_no])--;
 
-        printk("READ -> Data :%d Location :%d Index :%d\n",ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]]
+        printk("READ -> Data :%d Location :%d Index :%d\n",*(ring.data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]])
                                               ,control_channel->buffer_start[ring_no] + control_channel->head[ring_no]
                                               ,control_channel->index_data[ring_no]);
 
@@ -347,9 +350,33 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	int err,i=0;
 
 	 /*mapping shared memory for control channel*/
-	control_channel = (volatile struct control_channel*)ioremap(SHMDRAM_BASE,CONTROL_SIZE);
-	ring = (volatile struct circular_buffers*)ioremap(SHMDRAM_BASE + CONTROL_SIZE , TOTAL_BUFFER_SIZE);
-	printk("Control size: %d Buffers :%d\n",CONTROL_SIZE,TOTAL_BUFFER_SIZE);
+	control_channel = (volatile struct control_channel*)ioremap_nocache(SHMDRAM_BASE,CONTROL_SIZE);
+
+    buffer1 = (volatile uint8_t*)ioremap_nocache(SHMDRAM_BASE + CONTROL_SIZE,PAGE_SIZE);
+    buffer2 = (volatile uint8_t*)ioremap_nocache(SHMDRAM_BASE + CONTROL_SIZE + PAGE_SIZE,PAGE_SIZE);
+    buffer3 = (volatile uint8_t*)ioremap_nocache(SHMDRAM_BASE + CONTROL_SIZE + PAGE_SIZE + PAGE_SIZE,PAGE_SIZE);
+
+    for(i=0;i<TOTAL_BUFFER_SIZE;i++)
+    {
+        if(i < PAGE_SIZE)
+        {
+            ring.data[i] = (buffer1 + i);
+        }
+        else if(PAGE_SIZE <= i && i < (PAGE_SIZE * 2))
+        {
+            ring.data[i] = (buffer2 + (i % PAGE_SIZE));
+        }
+        else if((PAGE_SIZE * 2) <= i && i < (PAGE_SIZE * 3))
+        {
+            ring.data[i] = (buffer3 + (i % PAGE_SIZE));
+        }
+        else
+        {
+             printk("Buffer allocation failed\n");
+        }
+        printk("PAGE_SIZE :%d Index :%d Location :%p\n",PAGE_SIZE,i,ring.data[i]);
+    }
+
     control_channel->init_check = 0;
 	for(i=0;i<NUM_CHANNELS;i++)
     {
@@ -360,12 +387,9 @@ static int pru_bridge_probe(struct platform_device *pdev)
          control_channel->tail[i] = 0;		//initialising pru_data
     }
 
-    for(i=0;i<TOTAL_BUFFER_SIZE;i++)
-    {
-        ring->data[i] = 0;
-    }
 
-	printk("Memory allocated for control channel :%p Buffers :%p\n",control_channel,ring);
+
+	printk("Memory allocated for control channel :%p\n",control_channel);
 
 
 	/* Allocate memory for our private structure */
@@ -548,8 +572,10 @@ static int pru_bridge_remove(struct platform_device *pdev)
 	/*Deallocating memory*/
 
 	printk("deallocating memory\n");
-        iounmap(ring);
-        iounmap(control_channel);
+    iounmap(control_channel);
+    iounmap(buffer1);
+    iounmap(buffer2);
+    iounmap(buffer3);
 
     printk("removing sysfs files\n");
 
