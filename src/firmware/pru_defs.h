@@ -1,6 +1,8 @@
 #ifndef PRU_DEFS_H
 #define PRU_DEFS_H
 
+typedef unsigned int u32;
+
 volatile register unsigned int __R31;
 volatile register unsigned int __R30;
 

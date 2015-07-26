@@ -13,3 +13,6 @@ test.obj: test.c pru_bridge.h
 
 install: all
 	install -m 444 firmware /lib/firmware
+
+clean:
+	rm firmware *.obj
