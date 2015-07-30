@@ -52,12 +52,12 @@ head,tail - they are used to maintain the circular buffer
 */
 struct control_channel
 {
-	volatile uint16_t init_check;
-	volatile uint16_t channel_size[NUM_CHANNELS];
-	volatile uint16_t index_data[NUM_CHANNELS];
-	volatile uint16_t buffer_start[NUM_CHANNELS];
-	volatile uint16_t head[NUM_CHANNELS];
-	volatile uint16_t tail[NUM_CHANNELS];
+	volatile uint32_t init_check;
+	volatile uint32_t channel_size[NUM_CHANNELS];
+	volatile uint32_t index_data[NUM_CHANNELS];
+	volatile uint32_t buffer_start[NUM_CHANNELS];
+	volatile uint32_t head[NUM_CHANNELS];
+	volatile uint32_t tail[NUM_CHANNELS];
 }size_control;
 
 volatile struct control_channel* control_channel;
@@ -151,7 +151,7 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
     {
         if (isdigit(*p))
         {
-            control_channel->channel_size[i] = (uint16_t) simple_strtoul(p,&p,10);
+            control_channel->channel_size[i] = (uint32_t) simple_strtoul(p,&p,10);
             printk("Channel number:%d Size:%d\n",i+1,control_channel->channel_size[i]);
             i++;
         }
@@ -303,7 +303,7 @@ static ssize_t pru_bridge_downcall(struct device *dev, struct device_attribute *
     {
         if (isdigit(*p))
         {
-            downcall_value[i] = (uint16_t) simple_strtoul(p,&p,10);
+            downcall_value[i] = (uint32_t) simple_strtoul(p,&p,10);
             printk("Downcall values:%d\n ",downcall_value[i]);
             i++;
         }

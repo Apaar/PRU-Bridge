@@ -15,66 +15,57 @@
 #define TOTAL_BUFFER_SIZE 11500
 #define SHARED_MEM	0x00010000
 
-struct control_channel
+static volatile uint32_t* init_check = (volatile uint32_t*)SHARED_MEM;
+static volatile uint32_t* channel_size = (volatile uint32_t*)(SHARED_MEM + 4);
+static volatile uint32_t* index_data = (volatile uint32_t*)(SHARED_MEM + 4 + NUM_CHANNELS*4);
+static volatile uint32_t* buffer_start = (volatile uint32_t*)(SHARED_MEM + 4 + NUM_CHANNELS*8);
+static volatile uint32_t* head = (volatile uint32_t*)(SHARED_MEM + 4 + NUM_CHANNELS*12);
+static volatile uint32_t* tail = (volatile uint32_t*)(SHARED_MEM + 4 + NUM_CHANNELS*16);
+
+#define CONTROL_SIZE 4 + NUM_CHANNELS*4*5
+
+static volatile	uint8_t* data = (volatile uint8_t*)SHARED_MEM + CONTROL_SIZE;
+
+int read_buffer(int ring_no,uint8_t* pru_data,int length)
 {
-	volatile uint16_t init_check;
-	volatile uint16_t channel_size[NUM_CHANNELS];
-	volatile uint16_t index_data[NUM_CHANNELS];
-	volatile uint16_t buffer_start[NUM_CHANNELS];
-	volatile uint16_t head[NUM_CHANNELS];
-	volatile uint16_t tail[NUM_CHANNELS];
-}size_control;
-
-volatile struct control_channel* control_channel = (volatile struct control_channel*)SHARED_MEM;
-
-#define CONTROL_SIZE sizeof(size_control)+(sizeof(size_control)%4)
-
-struct circular_buffers
-{
-	uint8_t data[TOTAL_BUFFER_SIZE];
-};
-
-volatile struct circular_buffers* ring = (volatile struct circular_buffers*)(SHARED_MEM + CONTROL_SIZE);
-
-
-int read_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
-{
-    int i = 0;
-    while(i<length)
+    if(((int)index_data[ring_no] - length) >= 0)
     {
-        if(control_channel->index_data[ring_no] != 0)
+        int i;
+        for (i = 0 ; i < length ; i++)
         {
-            *(pru_data+i) = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
-            (control_channel->index_data[ring_no])--;
-            control_channel->head[ring_no] = (control_channel->head[ring_no]+1)%(control_channel->channel_size[ring_no]);
+            *(pru_data+i) = data[buffer_start[ring_no] + head[ring_no]];
+            head[ring_no] = (head[ring_no]+1)%(channel_size[ring_no]); 
         }
-        else
-            return -1;
-
-        i++;
+	index_data[ring_no] -= length;
     }
+    else
+	return -1;
+
+            
     return 0;
 }
-int write_buffer(int ring_no,uint8_t* pru_data,uint8_t length)
+int write_buffer(int ring_no,uint8_t* pru_data,int length)
 {
-    int i = 0;
-    while(i<length)
+    int i;
+    for (i = 0 ; i < length ; i++)
     {
-        ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = *(pru_data+i);
-        if((control_channel->index_data[ring_no]) < (control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
-            (control_channel->index_data[ring_no])++;
-        control_channel->tail[ring_no] = (control_channel->tail[ring_no]+1)%(control_channel->channel_size[ring_no]);
-        i++;
+        data[buffer_start[ring_no] + tail[ring_no]] = *(pru_data+i);
+        tail[ring_no] = (tail[ring_no]+1)%(channel_size[ring_no]);
     }
+    if((index_data[ring_no] + length) < (channel_size[ring_no]))     //allows pru to check if there is data to read or not
+        index_data[ring_no] += length;
+    else
+        index_data[ring_no] = channel_size[ring_no];
+
     return 0;
 }
 
 int check_init(void)
 {
-    return control_channel->init_check;
+    return *init_check;
 }
 
 int check_index(int ring_no)
 {
-    return ((control_channel->channel_size[ring_no]) - (control_channel->index_data[ring_no]));
+    return ((channel_size[ring_no]) - (index_data[ring_no]));
 }
