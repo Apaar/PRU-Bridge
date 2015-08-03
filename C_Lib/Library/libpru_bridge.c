@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include "pru_bridge.h"
 
-#define NUM_CHANNELS 10
 FILE *file_name[NUM_CHANNELS];
 
 int pru_bridge_init(int channel_sizes[NUM_CHANNELS])
@@ -88,7 +87,7 @@ void pru_channel_close(int channel_no)
    fclose(file_name[channel_no-1]);
 }
 
-int pru_write(int channel_no,uint8_t* pru_data,uint8_t length)
+int pru_write(int channel_no,uint8_t* pru_data,int length)
 {
     int i = 0;
     while(i<length)
@@ -100,7 +99,7 @@ int pru_write(int channel_no,uint8_t* pru_data,uint8_t length)
 return length;
 }
 
-int pru_read(int channel_no,uint8_t* pru_data,uint8_t length)
+int pru_read(int channel_no,uint8_t* pru_data,int length)
 {
     int i = 0;
     while(i<length)

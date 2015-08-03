@@ -1,9 +1,7 @@
-all: Library Example
+#!/bin/sh
 
-Library:
+all:
 	cd Library; make
-
-Example:
 	cd Example; make
 
 clean:
