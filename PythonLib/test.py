@@ -1,10 +1,12 @@
 
 #!/usr/bin/env python
 
-sizes = [1000,0,0,0,0]
-init(sizes)
-channel_open(1,0)
+import pru_bridge
+
+#sizes = [1000,0,0,0,0]
+#init(sizes)
+pru_bridge.channel_open(1,0)
 data = 'a'
-read(1,data)
+pru_bridge.read(1,data,1)
 print data
-channel_close(1)
+pru_bridge.channel_close(1)

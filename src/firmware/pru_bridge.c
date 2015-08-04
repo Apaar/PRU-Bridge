@@ -47,7 +47,7 @@ int read_buffer(int ring_no,uint8_t* pru_data,int length)
 int write_buffer(int ring_no,uint8_t* pru_data,int length)
 {
     int i;
-    for (i = 0 ; i < length ; i++)
+    for (i = length ; i > 0 ; i--)
     {
         data[buffer_start[ring_no] + tail[ring_no]] = *(pru_data+i);
         tail[ring_no] = (tail[ring_no]+1)%(channel_size[ring_no]);

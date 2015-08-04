@@ -28,6 +28,8 @@ def channel_close(channel_no):
     
 def read(channel_no,data,length):
     data = a[channel_no - 1].read(1)
+    print type(data)
+    print data
 
 def write(channel_no,data,length):
     i = length - 1
