@@ -1,5 +1,11 @@
-//code to for lossless stream data transfer via pru_bridge
-
+/*
+ * Userspace c library Example to measure delay between two 4 byte writes but this time includes cycles taken to calculate the delay
+ *
+ * Copyright (C) 2015 Apaar Gupta
+ * This file is licensed under the terms of the GNU General Public License
+ * version 2.  This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
+ */
 
 #include "pru_bridge.h"
 #include "pru_defs.h"
