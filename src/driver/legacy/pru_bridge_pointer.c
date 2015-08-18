@@ -1,6 +1,6 @@
 
 /*
- * PRU Bridge driver
+ * PRU Bridge driver but buffers are implemented via pointers which is hard to debug but may be more efficient
  *
  * Copyright (C) 2015 Apaar Gupta
  * This file is licensed under the terms of the GNU General Public License
@@ -52,12 +52,12 @@ head,tail - they are used to maintain the circular buffer
 */
 struct control_channel
 {
-	volatile uint32_t init_check;
-	volatile uint32_t channel_size[NUM_CHANNELS];
-	volatile uint32_t index_data[NUM_CHANNELS];
-	volatile uint32_t buffer_start[NUM_CHANNELS];
-	volatile uint32_t head[NUM_CHANNELS];
-	volatile uint32_t tail[NUM_CHANNELS];
+	volatile uint16_t init_check;
+	volatile uint16_t channel_size[NUM_CHANNELS];
+	volatile uint16_t index_data[NUM_CHANNELS];
+	volatile uint16_t buffer_start[NUM_CHANNELS];
+	volatile uint16_t head[NUM_CHANNELS];
+	volatile uint16_t tail[NUM_CHANNELS];
 }size_control;
 
 volatile struct control_channel* control_channel;
@@ -69,11 +69,13 @@ Definition of a the virtual buffer
 */
 struct circular_buffers
 {
-	uint8_t data[TOTAL_BUFFER_SIZE];
+	volatile uint8_t* data[TOTAL_BUFFER_SIZE];
 }size_ring;
 
-volatile struct circular_buffers* ring;
-
+struct circular_buffers ring;
+volatile uint8_t *buffer1;
+volatile uint8_t *buffer2;
+volatile uint8_t *buffer3;
 #define CIRCULAR_BUFFER_SIZE sizeof(size_ring)
 
 
@@ -88,14 +90,15 @@ struct pru_bridge_dev {
 	struct device *p_dev; /* parent platform device */
 };
 
+
 void write_buffer(int ring_no,uint8_t data)			//writing to pru shared memory
 {
-    ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]] = (uint8_t)data;
+    *(ring.data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]]) = (uint8_t)data;
 
     if((control_channel->index_data[ring_no])<(control_channel->channel_size[ring_no]))     //allows pru to check if there is data to read or not
         (control_channel->index_data[ring_no])++;
 
-    printk("WRITE-> Data :%d Location :%d Index :%d\n",ring->data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]]
+    printk("WRITE-> Data :%d Location :%d Index :%d\n",*(ring.data[control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]])
                                               ,control_channel->buffer_start[ring_no] + control_channel->tail[ring_no]
                                               ,control_channel->index_data[ring_no]);
 
@@ -111,11 +114,11 @@ uint8_t read_buffer(int ring_no)
 {
     if(control_channel->index_data[ring_no] != 0)
     {
-        uint8_t value = ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]];
+        uint8_t value = *(ring.data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]]);
 
         (control_channel->index_data[ring_no])--;
 
-        printk("READ -> Data :%d Location :%d Index :%d\n",ring->data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]]
+        printk("READ -> Data :%d Location :%d Index :%d\n",*(ring.data[control_channel->buffer_start[ring_no] + control_channel->head[ring_no]])
                                               ,control_channel->buffer_start[ring_no] + control_channel->head[ring_no]
                                               ,control_channel->index_data[ring_no]);
 
@@ -151,7 +154,7 @@ static ssize_t pru_bridge_init_channels(struct device *dev, struct device_attrib
     {
         if (isdigit(*p))
         {
-            control_channel->channel_size[i] = (uint32_t) simple_strtoul(p,&p,10);
+            control_channel->channel_size[i] = (uint16_t) simple_strtoul(p,&p,10);
             printk("Channel number:%d Size:%d\n",i+1,control_channel->channel_size[i]);
             i++;
         }
@@ -185,7 +188,7 @@ static ssize_t pru_bridge_ch1_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch1_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(0));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(0));
 }
 
 static ssize_t pru_bridge_ch2_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -196,7 +199,7 @@ static ssize_t pru_bridge_ch2_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch2_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(1));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(1));
 }
 
 static ssize_t pru_bridge_ch3_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -207,7 +210,7 @@ static ssize_t pru_bridge_ch3_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch3_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(2));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(2));
 }
 
 static ssize_t pru_bridge_ch4_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -218,7 +221,7 @@ static ssize_t pru_bridge_ch4_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch4_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(3));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(3));
 }
 
 static ssize_t pru_bridge_ch5_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -229,7 +232,7 @@ static ssize_t pru_bridge_ch5_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch5_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(4));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(4));
 }
 
 static ssize_t pru_bridge_ch6_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -240,7 +243,7 @@ static ssize_t pru_bridge_ch6_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch6_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(5));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(5));
 }
 
 static ssize_t pru_bridge_ch7_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -251,7 +254,7 @@ static ssize_t pru_bridge_ch7_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch7_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(6));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(6));
 }
 
 static ssize_t pru_bridge_ch8_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -262,7 +265,7 @@ static ssize_t pru_bridge_ch8_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch8_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(7));
+    return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(7));
 }
 
 static ssize_t pru_bridge_ch9_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -273,7 +276,9 @@ static ssize_t pru_bridge_ch9_write(struct device *dev, struct device_attribute 
 
 static ssize_t pru_bridge_ch9_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(7));
+    uint8_t data[control_channel->channel_size[8]];
+    flush_buffer(8,data);
+    return scnprintf(buf, PAGE_SIZE,"%s\n",data);
 }
 
 static ssize_t pru_bridge_ch10_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -284,9 +289,35 @@ static ssize_t pru_bridge_ch10_write(struct device *dev, struct device_attribute
 
 static ssize_t pru_bridge_ch10_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    	return scnprintf(buf, PAGE_SIZE,"%c\n",read_buffer(7));
+    uint8_t data[control_channel->channel_size[9]];
+    flush_buffer(9,data);
+    return scnprintf(buf, PAGE_SIZE,"%s\n",data);
 }
 
+static ssize_t pru_bridge_downcall(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct platform_device *pdev = to_platform_device(dev);
+    struct pru_bridge_dev *pp = platform_get_drvdata(pdev);
+
+    int i=0,downcall_value[7],ret;
+    char * p =(char*) buf;
+	printk("%s\n",buf);
+    while (*p)
+    {
+        if (isdigit(*p))
+        {
+            downcall_value[i] = (uint16_t) simple_strtoul(p,&p,10);
+            printk("Downcall values:%d\n ",downcall_value[i]);
+            i++;
+        }
+        else
+        {
+            p++;
+        }
+    }
+    ret = pp->downcall_idx(downcall_value[0],downcall_value[1],downcall_value[2],downcall_value[3],downcall_value[4],downcall_value[5],downcall_value[6]);
+	return strlen(buf)+1;
+}
 
 static DEVICE_ATTR(init, S_IWUSR|S_IRUGO,NULL,pru_bridge_init_channels);
 static DEVICE_ATTR(ch1_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch1_write);
@@ -309,7 +340,7 @@ static DEVICE_ATTR(ch9_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch9_write);
 static DEVICE_ATTR(ch9_read, S_IWUSR|S_IRUGO, pru_bridge_ch9_read, NULL);
 static DEVICE_ATTR(ch10_write,S_IWUSR|S_IRUGO,NULL,pru_bridge_ch10_write);
 static DEVICE_ATTR(ch10_read, S_IWUSR|S_IRUGO, pru_bridge_ch10_read, NULL);
-
+static DEVICE_ATTR(downcall, S_IWUSR|S_IRUGO,NULL,pru_bridge_downcall);
 
 static int pru_bridge_probe(struct platform_device *pdev)
 {
@@ -319,9 +350,33 @@ static int pru_bridge_probe(struct platform_device *pdev)
 	int err,i=0;
 
 	 /*mapping shared memory for control channel*/
-	control_channel = (volatile struct control_channel*)ioremap(SHMDRAM_BASE,CONTROL_SIZE);
-	ring = (volatile struct circular_buffers*)ioremap(SHMDRAM_BASE + CONTROL_SIZE , TOTAL_BUFFER_SIZE);
-	printk("Control size: %d Buffers :%d\n",CONTROL_SIZE,TOTAL_BUFFER_SIZE);
+	control_channel = (volatile struct control_channel*)ioremap_nocache(SHMDRAM_BASE,CONTROL_SIZE);
+
+    buffer1 = (volatile uint8_t*)ioremap_nocache(SHMDRAM_BASE + CONTROL_SIZE,PAGE_SIZE);
+    buffer2 = (volatile uint8_t*)ioremap_nocache(SHMDRAM_BASE + CONTROL_SIZE + PAGE_SIZE,PAGE_SIZE);
+    buffer3 = (volatile uint8_t*)ioremap_nocache(SHMDRAM_BASE + CONTROL_SIZE + PAGE_SIZE + PAGE_SIZE,PAGE_SIZE);
+
+    for(i=0;i<TOTAL_BUFFER_SIZE;i++)
+    {
+        if(i < PAGE_SIZE)
+        {
+            ring.data[i] = (buffer1 + i);
+        }
+        else if(PAGE_SIZE <= i && i < (PAGE_SIZE * 2))
+        {
+            ring.data[i] = (buffer2 + (i % PAGE_SIZE));
+        }
+        else if((PAGE_SIZE * 2) <= i && i < (PAGE_SIZE * 3))
+        {
+            ring.data[i] = (buffer3 + (i % PAGE_SIZE));
+        }
+        else
+        {
+             printk("Buffer allocation failed\n");
+        }
+        printk("PAGE_SIZE :%d Index :%d Location :%p\n",PAGE_SIZE,i,ring.data[i]);
+    }
+
     control_channel->init_check = 0;
 	for(i=0;i<NUM_CHANNELS;i++)
     {
@@ -332,12 +387,9 @@ static int pru_bridge_probe(struct platform_device *pdev)
          control_channel->tail[i] = 0;		//initialising pru_data
     }
 
-    for(i=0;i<TOTAL_BUFFER_SIZE;i++)
-    {
-        ring->data[i] = 0;
-    }
 
-	printk("Memory allocated for control channel :%p Buffers :%p\n",control_channel,ring);
+
+	printk("Memory allocated for control channel :%p\n",control_channel);
 
 
 	/* Allocate memory for our private structure */
@@ -496,7 +548,12 @@ static int pru_bridge_probe(struct platform_device *pdev)
             goto err_fail;
     }
 
-    
+    err = device_create_file(dev, &dev_attr_downcall);
+    if (err != 0){
+            dev_err(dev, "device_create_file failed\n");
+            goto err_fail;
+    }
+
 	dev_info(dev, "Loaded OK\n");
 
 	printk("Probe successful");
@@ -515,8 +572,10 @@ static int pru_bridge_remove(struct platform_device *pdev)
 	/*Deallocating memory*/
 
 	printk("deallocating memory\n");
-        iounmap(ring);
-        iounmap(control_channel);
+    iounmap(control_channel);
+    iounmap(buffer1);
+    iounmap(buffer2);
+    iounmap(buffer3);
 
     printk("removing sysfs files\n");
 
@@ -541,6 +600,7 @@ static int pru_bridge_remove(struct platform_device *pdev)
     device_remove_file(dev, &dev_attr_ch9_read);
     device_remove_file(dev, &dev_attr_ch10_write);
     device_remove_file(dev, &dev_attr_ch10_read);
+    device_remove_file(dev, &dev_attr_downcall);
 	platform_set_drvdata(pdev, NULL);
 
 
