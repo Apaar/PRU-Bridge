@@ -3,27 +3,36 @@
 
 A generic, multi channel bridge between userspace Linux and PRU allowing for easy and efficient data tranfer.
 
-Each channel will be represented by 2 sysfs files in userspace one for read and the other for write.Number of channels will be fixed but length can be varied.
+Each channel is unidirectional and will be represented by sysfs files in userspace.Number of channels has been fixed at 10 but length of each channel can be varied.
 
 
-
-### Userspace Linux API's
+### Userspace Linux C API's(pru_bridge.h)
 ```javascript
-int pru_bridge_init(int channel_sizes[NUM_CHANNELS]);
-void pru_channel_open(int channel_no,int type);
+int pru_bridge_init(int channel_sizes[NUM_CHANNELS]);   
+//channel_sizes is a array of 10 int which contain channel sizes
+void pru_channel_open(int channel_no,int type);         
+//type is either PRU_READ or PRU_WRITE depending on channel type
 void pru_channel_close(int channel_no);
-int pru_write(int channel_no,void* pru_data,uint8_t length);
-int pru_read(int channel_no,uint8_t* data,uint8_t length);
+int pru_write(int channel_no,uint8_t* pru_data,int length);
+int pru_read(int channel_no,uint8_t* pru_data,int length);
+```
+### Userspace Linux Python API's
+```javascript
+init(channel_sizes)
+//channel_sizes is a array of 10 int which contain channel sizes
+channel_open(channel_no,channel_type)
+channel_close(channel_no)
+read(channel_no,data,length)
+write(channel_no,data,length)
 ```
 
 ### PRU C API's
 (not sure if all can be implemented due to code size constraints)
 ```javascript
-int check_init()		//returns whether or not driver/channels have been initilsied unit this is not '1' pru_bridge cannot be used
-void arm_write(int channel_no,char data)
-void arm_block_write(int channel_no,char* data,int length)
-char arm_read(int channel_no)
-char* arm_block_read(int channel_no,int length)
+int check_init()		//returns whether or not driver/channels have been initialisied until this is not '1' pru_bridge cannot be used
+int read_buffer(int ring_no,uint8_t* pru_data,int length);
+int write_buffer(int ring_no,uint8_t* pru_data,int length);
+int check_index(int ring_no);
 ```
 
 ### How It Works
