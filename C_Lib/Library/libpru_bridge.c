@@ -21,28 +21,34 @@ FILE *file_name[NUM_CHANNELS];
 int pru_bridge_init(int channel_sizes[NUM_CHANNELS])
 {
     int i=0;
-    char input[100],char_sizes[10];
+    char input[100],char_sizes[11];
     strcpy(input,"");
 
     int size_check = 0;
 
     for(i=0;i<NUM_CHANNELS;i++)
     {
+        size_check += channel_sizes[i];
+    }
+
+    if(size_check > 11500)          //500 bytes should be enough to accomodate control channel
+    {
+        printf("Buffer size insufficient\n");
+        return 1;
+    }
+
+    for(i=0;i<NUM_CHANNELS;i++)
+    {
         sprintf(char_sizes, "%d",channel_sizes[i]);
         strcat(input, char_sizes);
         strcat(input, " ");
-        size_check += channel_sizes[i];
         if(channel_sizes[i] < 0)
         {
             printf("Invalid Size\n");
             return 1;
         }
     }
-    if(size_check > 11500)          //500 bytes should be enough to accomodate control channel
-    {
-        printf("Buffer size insufficient\n");
-        return 1;
-    }
+
 
     strcat(input, "\n\0");
     FILE* fp = fopen("/sys/devices/virtual/misc/pru_bridge/init","w");
